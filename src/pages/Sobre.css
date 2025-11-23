@@ -1,0 +1,137 @@
+.sobre-page {
+  min-height: calc(100vh - 80px);
+  padding: 4rem 2rem;
+  background: #0d2818;
+}
+
+.page-title {
+  font-size: 2.5rem;
+  color: #fff;
+  text-align: center;
+  margin-bottom: 3rem;
+  font-weight: 700;
+}
+
+.sobre-content {
+  max-width: 1000px;
+  margin: 0 auto 4rem;
+  display: grid;
+  gap: 2rem;
+}
+
+.sobre-card {
+  background: linear-gradient(135deg, #0d2818 0%, #1a4d2e 100%);
+  border-radius: 12px;
+  padding: 2.5rem;
+  color: #fff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.sobre-card h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.sobre-card p {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0;
+}
+
+.signup-section-sobre {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.signup-card {
+  background: linear-gradient(135deg, #0d2818 0%, #1a4d2e 100%);
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(74, 222, 128, 0.2);
+}
+
+.signup-card h2 {
+  color: #fff;
+  font-size: 2rem;
+  margin: 0 0 0.5rem 0;
+  text-align: center;
+}
+
+.signup-card > p {
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin: 0 0 2rem 0;
+  font-size: 1.1rem;
+}
+
+.signup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.signup-form input {
+  padding: 1rem;
+  border: 2px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.signup-form input:focus {
+  outline: none;
+  border-color: #4ade80;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.signup-form input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.btn {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, #4ade80, #22c55e);
+  color: #0d2818;
+  box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.6);
+  background: linear-gradient(45deg, #22c55e, #4ade80);
+}
+
+@media (max-width: 768px) {
+  .sobre-card {
+    padding: 1.5rem;
+  }
+
+  .sobre-card h2 {
+    font-size: 1.5rem;
+  }
+
+  .sobre-card p {
+    font-size: 1rem;
+  }
+
+  .signup-card {
+    padding: 2rem;
+  }
+}
