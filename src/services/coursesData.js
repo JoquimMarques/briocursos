@@ -1,10 +1,10 @@
 // Serviço para gerenciar dados de cursos de programação
 
-// Importar imagens
-import portugolImage from '../img/portugol-webstudio-icon-filled-256.png'
-import htmlImage from '../img/images.png'
-import cssImage from '../img/png-transparent-css-logo-thumbnail.png'
-import jsImage from '../img/Unofficial_JavaScript_logo_2.png'
+// Caminhos das imagens (arquivos estão em public/img/)
+const portugolImage = '/img/portugol-webstudio-icon-filled-256.png'
+const htmlImage = '/img/images.png'
+const cssImage = '/img/png-transparent-css-logo-thumbnail.png'
+const jsImage = '/img/Unofficial_JavaScript_logo_2.png'
 
 /**
  * Lista de cursos de programação disponíveis
