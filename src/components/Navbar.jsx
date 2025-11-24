@@ -30,6 +30,7 @@ function Navbar() {
             src="/img/logo.png" 
             alt="BrioCursos Logo" 
             className="logo-image"
+            style={{ borderRadius: '100%' }}
             onError={(e) => {
               e.target.style.display = 'none'
             }}
