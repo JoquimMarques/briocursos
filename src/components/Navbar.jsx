@@ -26,6 +26,14 @@ function Navbar() {
       )}
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
+          <img 
+            src="/img/logo.png" 
+            alt="BrioCursos Logo" 
+            className="logo-image"
+            onError={(e) => {
+              e.target.style.display = 'none'
+            }}
+          />
           <span className="logo-text">BrioCursos</span>
         </Link>
         

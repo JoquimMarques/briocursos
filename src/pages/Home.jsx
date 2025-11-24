@@ -80,7 +80,7 @@ function Home() {
           </div>
           <div className="hero-image">
             <img 
-              src="/src/img/placeholder-hero.png" 
+              src="/img/placeholder-hero.png" 
               alt="Programação" 
               onError={(e) => {
                 e.target.style.display = 'none'
