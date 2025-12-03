@@ -196,6 +196,86 @@ export const imageToBase64 = (file) => {
 }
 
 /**
+ * Comprime e redimensiona imagem para reduzir tamanho
+ * @param {File} file - Arquivo de imagem
+ * @param {number} maxWidth - Largura máxima (padrão: 800px)
+ * @param {number} maxHeight - Altura máxima (padrão: 800px)
+ * @param {number} quality - Qualidade da compressão 0-1 (padrão: 0.8)
+ * @returns {Promise<string>} - Base64 da imagem comprimida
+ */
+export const compressImage = (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('Arquivo não é uma imagem'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        // Calcular novas dimensões mantendo proporção
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height)
+          width = width * ratio
+          height = height * ratio
+        }
+
+        // Criar canvas para redimensionar
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        // Converter para base64 com compressão
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Erro ao comprimir imagem'))
+              return
+            }
+            
+            // Verificar se o blob ainda é muito grande (> 900KB para deixar margem)
+            if (blob.size > 900 * 1024) {
+              // Tentar com qualidade menor
+              canvas.toBlob(
+                (smallerBlob) => {
+                  if (!smallerBlob) {
+                    reject(new Error('Erro ao comprimir imagem'))
+                    return
+                  }
+                  const reader2 = new FileReader()
+                  reader2.onload = () => resolve(reader2.result)
+                  reader2.onerror = (error) => reject(error)
+                  reader2.readAsDataURL(smallerBlob)
+                },
+                file.type,
+                0.6 // Qualidade ainda menor
+              )
+            } else {
+              const reader2 = new FileReader()
+              reader2.onload = () => resolve(reader2.result)
+              reader2.onerror = (error) => reject(error)
+              reader2.readAsDataURL(blob)
+            }
+          },
+          file.type,
+          quality
+        )
+      }
+      img.onerror = () => reject(new Error('Erro ao carregar imagem'))
+      img.src = e.target.result
+    }
+    reader.onerror = (error) => reject(error)
+    reader.readAsDataURL(file)
+  })
+}
+
+/**
  * Envia email de recuperação de senha
  */
 export const resetPassword = async (email) => {

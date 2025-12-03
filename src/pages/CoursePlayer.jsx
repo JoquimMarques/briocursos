@@ -93,7 +93,20 @@ function CoursePlayer() {
     if (!url) return null
     const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
     if (videoId && videoId[1]) {
-      return `https://www.youtube.com/embed/${videoId[1]}`
+      // Script padrão para embed do YouTube - remove recomendações e outros elementos
+      // rel=0: Remove vídeos relacionados no final
+      // modestbranding=1: Remove logo do YouTube
+      // showinfo=0: Remove informações do vídeo (deprecated mas ainda funciona)
+      // controls=1: Mostra controles
+      // fs=1: Permite fullscreen
+      // cc_load_policy=0: Não carrega legendas automaticamente
+      // iv_load_policy=3: Remove anotações
+      // autohide=1: Esconde controles automaticamente
+      // playsinline=1: Reproduz inline em mobile
+      // enablejsapi=1: Habilita API JavaScript
+      // origin: Define origem para segurança
+      const cleanVideoId = videoId[1].split('&')[0].split('?')[0]
+      return `https://www.youtube.com/embed/${cleanVideoId}?rel=0&modestbranding=1&showinfo=0&controls=1&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=1&playsinline=1&enablejsapi=1&origin=${window.location.origin}`
     }
     return url
   }
@@ -425,16 +438,8 @@ function CoursePlayer() {
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                           frameBorder="0"
+                          loading="lazy"
                         ></iframe>
-                        {isEnrolled && !completedVideos.includes(selectedVideo.id) && (
-                          <button 
-                            className="mark-complete-button"
-                            onClick={() => handleVideoComplete(selectedVideo.id)}
-                            title="Marcar vídeo como concluído"
-                          >
-                            ✓ Marcar como Concluído
-                          </button>
-                        )}
                       </div>
                     )
                   } else if (isCustomVideo && selectedVideo.url) {
@@ -470,7 +475,18 @@ function CoursePlayer() {
                   }
                 })()}
                 <div className="video-title-display">
-                  <h3>{selectedVideo.title}</h3>
+                  <div className="video-title-header">
+                    <h3>{selectedVideo.title}</h3>
+                    {isEnrolled && !completedVideos.includes(selectedVideo.id) && (
+                      <button 
+                        className="mark-complete-button"
+                        onClick={() => handleVideoComplete(selectedVideo.id)}
+                        title="Marcar vídeo como concluído"
+                      >
+                        ✓ Marcar como Concluído
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ) : videos.length === 0 ? (
