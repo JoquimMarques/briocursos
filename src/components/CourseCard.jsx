@@ -68,11 +68,18 @@ function CourseCard({ course }) {
           {course.description || 'Descrição não disponível'}
         </p>
         <div className="course-footer">
-          {course.students !== undefined && (
-            <span className="course-students">
-              👥 {course.students.toLocaleString()} alunos
-            </span>
-          )}
+          <div className="course-footer-top">
+            {course.students !== undefined && (
+              <span className="course-students">
+                👥 {course.students.toLocaleString()} alunos
+              </span>
+            )}
+            {course.rating !== undefined && course.rating > 0 && (
+              <span className="course-rating">
+                ⭐ {course.rating.toFixed(1)} {course.ratingCount > 0 && `(${course.ratingCount})`}
+              </span>
+            )}
+          </div>
           {!loading && !isEnrolled && course.price !== undefined && (
             <span className="course-price">
               {course.price > 0 ? `R$ ${course.price.toFixed(2)}` : 'Grátis'}

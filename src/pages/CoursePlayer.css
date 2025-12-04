@@ -152,20 +152,10 @@
   border-top: 1px solid rgba(74, 222, 128, 0.2);
 }
 
-.video-title-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
 .video-title-display h3 {
   color: #fff;
   margin: 0;
   font-size: 1.25rem;
-  flex: 1;
-  min-width: 200px;
 }
 
 .course-iframe {
@@ -177,24 +167,6 @@
   border: none;
   display: block;
   background: #000;
-}
-
-/* Esconder elementos do YouTube que podem aparecer mesmo com parâmetros */
-.youtube-video-container {
-  position: relative;
-  overflow: hidden;
-}
-
-.youtube-video-container::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 60px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 1;
 }
 
 .course-video-player {
@@ -417,24 +389,77 @@
   text-align: center;
 }
 
+.video-title-display {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.video-title-with-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.video-title-with-button h3 {
+  color: #fff;
+  font-size: 1.5rem;
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+}
+
 .mark-complete-button {
   background: linear-gradient(45deg, #4ade80, #22c55e);
   color: #0d2818;
-  border: none;
   padding: 0.75rem 1.5rem;
+  border: none;
   border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 4px 15px rgba(74, 222, 128, 0.4);
   white-space: nowrap;
+}
+
+.mark-complete-button.enabled:hover {
+  background: linear-gradient(45deg, #22c55e, #16a34a);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.6);
+}
+
+.mark-complete-button.disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.video-completed-badge {
+  background: linear-gradient(45deg, #4ade80, #22c55e);
+  color: #0d2818;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.video-progress-hint {
+  margin-top: 0.5rem;
+  color: rgba(255, 255, 255, 0.6);
   font-size: 0.9rem;
 }
 
-.mark-complete-button:hover {
-  background: linear-gradient(45deg, #22c55e, #4ade80);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(74, 222, 128, 0.6);
+.video-enroll-hint {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  font-style: italic;
+  padding: 0.5rem 1rem;
+  background: rgba(74, 222, 128, 0.1);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
 }
 
 .btn-enroll {
@@ -563,6 +588,119 @@
   color: rgba(255, 255, 255, 0.8);
   font-size: 0.9rem;
   margin: 0.5rem 0 0 0;
+}
+
+/* Seção de Avaliações Individuais */
+.course-reviews-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.reviews-title {
+  color: #fff;
+  margin: 0 0 1.5rem 0;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.review-item {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 1rem;
+  transition: all 0.3s;
+}
+
+.review-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.review-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+  color: #0d2818;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.review-name {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.review-stars {
+  display: flex;
+  gap: 0.2rem;
+}
+
+.review-star {
+  font-size: 1rem;
+}
+
+.review-star.filled {
+  color: #383003;
+  filter: drop-shadow(0 0 2px rgba(74, 63, 1, 0.5));
+}
+
+.review-star.empty {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.review-date {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* Scrollbar personalizada para a lista de avaliações */
+.reviews-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.reviews-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.reviews-list::-webkit-scrollbar-thumb {
+  background: rgba(74, 222, 128, 0.3);
+  border-radius: 10px;
+}
+
+.reviews-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 222, 128, 0.5);
 }
 
 .course-modules {
@@ -749,20 +887,6 @@
 
   .course-description-section h3 {
     font-size: 1.2rem;
-  }
-
-  .video-title-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .video-title-display h3 {
-    margin-bottom: 0.75rem;
-  }
-
-  .mark-complete-button {
-    width: 100%;
-    padding: 0.875rem 1.5rem;
   }
 }
 

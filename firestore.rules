@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Regras para a coleção de cursos
+    match /courses/{courseId} {
+      // Permitir leitura pública dos dados dos cursos
+      allow read: if true;
+      
+      // Permitir escrita apenas para usuários autenticados (opcional, para admins)
+      allow write: if request.auth != null;
+      
+      // Regras para subcoleção de inscrições (enrollments)
+      match /enrollments/{enrollmentId} {
+        // Permitir leitura pública para contar alunos
+        allow read: if true;
+        
+        // Permitir escrita apenas para usuários autenticados
+        // E apenas se o userId do documento corresponder ao usuário autenticado
+        allow create: if request.auth != null 
+                     && request.resource.data.userId == request.auth.uid;
+        
+        // Permitir atualização apenas pelo próprio usuário
+        allow update: if request.auth != null 
+                     && resource.data.userId == request.auth.uid
+                     && request.resource.data.userId == request.auth.uid;
+        
+        // Permitir leitura pelo próprio usuário ou público
+        allow read: if true || (request.auth != null && resource.data.userId == request.auth.uid);
+      }
+      
+      // Regras para subcoleção de avaliações (ratings)
+      match /ratings/{ratingId} {
+        // Permitir leitura pública para calcular média de avaliações
+        allow read: if true;
+        
+        // Permitir escrita apenas para usuários autenticados
+        // E apenas se o userId do documento corresponder ao usuário autenticado
+        allow create: if request.auth != null 
+                     && request.resource.data.userId == request.auth.uid;
+        
+        // Permitir atualização apenas pelo próprio usuário
+        allow update: if request.auth != null 
+                     && resource.data.userId == request.auth.uid
+                     && request.resource.data.userId == request.auth.uid;
+      }
+    }
+    
+    // Regras para a coleção de usuários
+    match /users/{userId} {
+      // Permitir leitura apenas pelo próprio usuário
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Permitir escrita apenas pelo próprio usuário
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Regras para a coleção de professores
+    match /professores/{professorId} {
+      // Permitir leitura pública
+      allow read: if true;
+      
+      // Permitir escrita apenas para usuários autenticados
+      allow write: if request.auth != null;
+    }
+  }
+}
+

@@ -146,7 +146,10 @@ export const getCourseEnrollmentCount = async (courseId) => {
     const enrollmentsSnapshot = await getDocs(enrollmentsRef)
     return enrollmentsSnapshot.size
   } catch (error) {
-    console.error('Erro ao contar inscrições:', error)
+    // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+    if (error.code !== 'permission-denied') {
+      console.error('Erro ao contar inscrições:', error)
+    }
     return 0
   }
 }
@@ -170,7 +173,10 @@ export const getCourseStudents = async (courseId) => {
     // Se não tiver no documento, contar as inscrições
     return await getCourseEnrollmentCount(courseId)
   } catch (error) {
-    console.error('Erro ao buscar número de alunos:', error)
+    // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+    if (error.code !== 'permission-denied') {
+      console.error('Erro ao buscar número de alunos:', error)
+    }
     // Em caso de erro, contar as inscrições
     return await getCourseEnrollmentCount(courseId)
   }

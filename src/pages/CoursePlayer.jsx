@@ -26,11 +26,17 @@ function CoursePlayer() {
   const [hasRated, setHasRated] = useState(false)
   const [averageRating, setAverageRating] = useState(0)
   const [totalRatings, setTotalRatings] = useState(0)
+  const [allRatings, setAllRatings] = useState([]) // Todas as avaliações individuais
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [completedVideos, setCompletedVideos] = useState([])
   const [progress, setProgress] = useState(0)
   const [enrolling, setEnrolling] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0) // Progresso do vídeo (0-100)
+  const [videoDuration, setVideoDuration] = useState(0) // Duração total do vídeo
+  const [canMarkComplete, setCanMarkComplete] = useState(false) // Pode marcar como concluído
   const videoRef = useRef(null)
+  const iframeRef = useRef(null)
+  const watchTimerRef = useRef(null)
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -48,11 +54,23 @@ function CoursePlayer() {
               const firestoreData = courseSnap.data()
               const firestoreVideos = firestoreData.videos || []
               
-              // Validar vídeos antes de definir
-              const validVideos = firestoreVideos.filter(video => {
-                const isValid = video && video.id && video.url && video.title
-                return isValid
-              })
+              // Validar vídeos antes de definir e garantir que todos tenham ID
+              const validVideos = firestoreVideos
+                .filter(video => {
+                  const hasRequiredFields = video && video.url && video.title
+                  return hasRequiredFields
+                })
+                .map((video, index) => {
+                  // Se o vídeo não tiver ID, criar um baseado no índice e timestamp
+                  if (!video.id) {
+                    console.warn('Vídeo sem ID encontrado, criando ID automático:', video.title)
+                    return {
+                      ...video,
+                      id: `video-${Date.now()}-${index}`
+                    }
+                  }
+                  return video
+                })
               
               setVideos(validVideos)
               
@@ -93,20 +111,7 @@ function CoursePlayer() {
     if (!url) return null
     const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
     if (videoId && videoId[1]) {
-      // Script padrão para embed do YouTube - remove recomendações e outros elementos
-      // rel=0: Remove vídeos relacionados no final
-      // modestbranding=1: Remove logo do YouTube
-      // showinfo=0: Remove informações do vídeo (deprecated mas ainda funciona)
-      // controls=1: Mostra controles
-      // fs=1: Permite fullscreen
-      // cc_load_policy=0: Não carrega legendas automaticamente
-      // iv_load_policy=3: Remove anotações
-      // autohide=1: Esconde controles automaticamente
-      // playsinline=1: Reproduz inline em mobile
-      // enablejsapi=1: Habilita API JavaScript
-      // origin: Define origem para segurança
-      const cleanVideoId = videoId[1].split('&')[0].split('?')[0]
-      return `https://www.youtube.com/embed/${cleanVideoId}?rel=0&modestbranding=1&showinfo=0&controls=1&fs=1&cc_load_policy=0&iv_load_policy=3&autohide=1&playsinline=1&enablejsapi=1&origin=${window.location.origin}`
+      return `https://www.youtube.com/embed/${videoId[1]}`
     }
     return url
   }
@@ -197,21 +202,65 @@ function CoursePlayer() {
       if (!ratingsSnapshot.empty) {
         let total = 0
         let count = 0
+        const ratingsList = []
         
-        ratingsSnapshot.forEach((doc) => {
-          const data = doc.data()
-          total += data.rating || 0
+        // Buscar dados dos usuários para cada avaliação
+        const { getUserData } = await import('../services/authService')
+        
+        for (const docSnap of ratingsSnapshot.docs) {
+          const data = docSnap.data()
+          const ratingValue = data.rating || 0
+          total += ratingValue
           count++
+          
+          // Buscar dados do usuário
+          let userName = 'Usuário Anônimo'
+          if (data.userId) {
+            try {
+              const { data: userData } = await getUserData(data.userId)
+              if (userData && userData.fullName) {
+                userName = userData.fullName
+              } else if (userData && userData.email) {
+                userName = userData.email.split('@')[0]
+              }
+            } catch (err) {
+              // Se não conseguir buscar, usar userId como fallback
+              userName = `Usuário ${data.userId.substring(0, 8)}`
+            }
+          }
+          
+          ratingsList.push({
+            id: docSnap.id,
+            userId: data.userId,
+            userName: userName,
+            rating: ratingValue,
+            createdAt: data.createdAt || ''
+          })
+        }
+        
+        // Ordenar por data (mais recentes primeiro)
+        ratingsList.sort((a, b) => {
+          if (!a.createdAt) return 1
+          if (!b.createdAt) return -1
+          return new Date(b.createdAt) - new Date(a.createdAt)
         })
         
+        setAllRatings(ratingsList)
         setAverageRating(total / count)
         setTotalRatings(count)
       } else {
         setAverageRating(0)
         setTotalRatings(0)
+        setAllRatings([])
       }
     } catch (err) {
-      console.error('Erro ao carregar avaliações:', err)
+      // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+      if (err.code !== 'permission-denied') {
+        console.error('Erro ao carregar avaliações:', err)
+      }
+      setAverageRating(0)
+      setTotalRatings(0)
+      setAllRatings([])
     }
   }
 
@@ -230,7 +279,11 @@ function CoursePlayer() {
         setHasRated(false)
       }
     } catch (err) {
-      console.error('Erro ao verificar avaliação do usuário:', err)
+      // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+      if (err.code !== 'permission-denied') {
+        console.error('Erro ao verificar avaliação do usuário:', err)
+      }
+      setHasRated(false)
     }
   }
 
@@ -288,6 +341,11 @@ function CoursePlayer() {
 
   const handleVideoComplete = async (videoId) => {
     if (!user || !isEnrolled) return
+    
+    if (!videoId) {
+      console.error('ID do vídeo não encontrado')
+      return
+    }
 
     // Verificar se o vídeo já foi marcado como concluído
     if (completedVideos.includes(videoId)) {
@@ -311,16 +369,57 @@ function CoursePlayer() {
     }
   }
 
-  // Detectar quando o vídeo termina (apenas para vídeos customizados)
+  // Habilitar botão após tempo fixo (2 minutos)
+  useEffect(() => {
+    // Limpar timer anterior se houver
+    if (watchTimerRef.current) {
+      clearTimeout(watchTimerRef.current)
+    }
+
+    // Resetar estado quando mudar de vídeo
+    setCanMarkComplete(false)
+    setVideoProgress(0)
+
+    if (!selectedVideo || !isEnrolled || completedVideos.includes(selectedVideo.id)) {
+      return
+    }
+
+    // Timer de 2 minutos
+    const WATCH_TIME_REQUIRED = 120000 // 2 minutos (120000 ms)
+
+    watchTimerRef.current = setTimeout(() => {
+      setCanMarkComplete(true)
+      setVideoProgress(90) // Simular 90% para mostrar no UI
+    }, WATCH_TIME_REQUIRED)
+
+    return () => {
+      if (watchTimerRef.current) {
+        clearTimeout(watchTimerRef.current)
+      }
+    }
+  }, [selectedVideo, isEnrolled, completedVideos])
+
+  // Rastrear progresso do vídeo (apenas para vídeos customizados - opcional)
   useEffect(() => {
     const videoElement = videoRef.current
-    if (!videoElement || !selectedVideo || !isEnrolled) return
+    if (!videoElement || !selectedVideo || !isEnrolled) {
+      return
+    }
     
-    // Apenas para vídeos customizados (não YouTube)
-    const isCustomVideo = selectedVideo.videoType === 'custom' || (!selectedVideo.videoType && !selectedVideo.videoId)
+    // Apenas para vídeos customizados (não YouTube/Vimeo)
+    const isCustomVideo = selectedVideo.videoType === 'custom' || 
+                         selectedVideo.videoType === 'url' ||
+                         (!selectedVideo.videoType && !selectedVideo.videoId && 
+                          selectedVideo.url && 
+                          !selectedVideo.url.includes('youtube.com') && 
+                          !selectedVideo.url.includes('youtu.be') && 
+                          !selectedVideo.url.includes('vimeo.com'))
+    
     if (!isCustomVideo) return
 
     const handleVideoEnd = () => {
+      setVideoProgress(100)
+      setCanMarkComplete(true)
       if (selectedVideo.id && !completedVideos.includes(selectedVideo.id)) {
         handleVideoComplete(selectedVideo.id)
       }
@@ -357,8 +456,11 @@ function CoursePlayer() {
       // Recarregar avaliações para atualizar a média
       await loadRatings()
     } catch (err) {
-      console.error('Erro ao salvar avaliação:', err)
-      setError('Erro ao salvar avaliação. Tente novamente.')
+      // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+      if (err.code !== 'permission-denied') {
+        console.error('Erro ao salvar avaliação:', err)
+      }
+      setError('Erro ao salvar avaliação. Verifique as permissões do Firestore.')
     }
   }
 
@@ -432,13 +534,13 @@ function CoursePlayer() {
                     return (
                       <div className="youtube-video-container">
                         <iframe
+                          ref={iframeRef}
                           src={embedUrl}
                           title={selectedVideo.title}
                           className="course-iframe"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                           allowFullScreen
                           frameBorder="0"
-                          loading="lazy"
                         ></iframe>
                       </div>
                     )
@@ -475,18 +577,53 @@ function CoursePlayer() {
                   }
                 })()}
                 <div className="video-title-display">
-                  <div className="video-title-header">
+                  <div className="video-title-with-button">
                     <h3>{selectedVideo.title}</h3>
-                    {isEnrolled && !completedVideos.includes(selectedVideo.id) && (
-                      <button 
-                        className="mark-complete-button"
-                        onClick={() => handleVideoComplete(selectedVideo.id)}
-                        title="Marcar vídeo como concluído"
-                      >
-                        ✓ Marcar como Concluído
-                      </button>
-                    )}
+                    {(() => {
+                      // Debug: verificar se o vídeo tem ID
+                      if (!selectedVideo.id) {
+                        console.warn('⚠️ Vídeo sem ID:', selectedVideo)
+                      }
+                      
+                      if (!isEnrolled) {
+                        return (
+                          <span className="video-enroll-hint">
+                            Inscreva-se no curso para marcar vídeos como concluídos
+                          </span>
+                        )
+                      }
+                      
+                      if (!selectedVideo.id) {
+                        return (
+                          <span className="video-enroll-hint" style={{ fontSize: '0.85rem', color: '#ff6b6b' }}>
+                            ⚠️ Erro: Vídeo sem ID. Recarregue a página.
+                          </span>
+                        )
+                      }
+                      
+                      if (completedVideos.includes(selectedVideo.id)) {
+                        return (
+                          <span className="video-completed-badge">✓ Concluído</span>
+                        )
+                      }
+                      
+                      return (
+                        <button 
+                          className={`mark-complete-button ${canMarkComplete ? 'enabled' : 'disabled'}`}
+                          onClick={() => handleVideoComplete(selectedVideo.id)}
+                          disabled={!canMarkComplete}
+                          title={canMarkComplete ? "Marcar vídeo como concluído" : "Assista o vídeo por 2 minutos para marcar como concluído"}
+                        >
+                          ✓ Marcar como Concluído
+                        </button>
+                      )
+                    })()}
                   </div>
+                  {isEnrolled && selectedVideo.id && !completedVideos.includes(selectedVideo.id) && !canMarkComplete && (
+                    <div className="video-progress-hint">
+                      <small>Assista o vídeo por 2 minutos para marcar como concluído...</small>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : videos.length === 0 ? (
@@ -621,6 +758,46 @@ function CoursePlayer() {
                 </p>
               )}
             </div>
+
+            {/* Seção de Avaliações Individuais */}
+            {allRatings.length > 0 && (
+              <div className="course-reviews-section">
+                <h4 className="reviews-title">Avaliações dos Alunos ({allRatings.length})</h4>
+                <div className="reviews-list">
+                  {allRatings.map((rating) => (
+                    <div key={rating.id} className="review-item">
+                      <div className="review-header">
+                        <div className="review-user">
+                          <span className="review-avatar">
+                            {rating.userName.charAt(0).toUpperCase()}
+                          </span>
+                          <span className="review-name">{rating.userName}</span>
+                        </div>
+                        <div className="review-stars">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={`review-star ${star <= rating.rating ? 'filled' : 'empty'}`}
+                            >
+                              ⭐
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      {rating.createdAt && (
+                        <div className="review-date">
+                          {new Date(rating.createdAt).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {videos.length > 0 && (

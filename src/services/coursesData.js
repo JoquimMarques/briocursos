@@ -380,8 +380,51 @@ export const getCourseStudentsCount = async (courseId) => {
     
     return snapshot.size || 0
   } catch (error) {
+    // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+    // O erro será resolvido quando as regras forem aplicadas no Firebase Console
+    if (error.code !== 'permission-denied') {
     console.error('Erro ao buscar número de alunos:', error)
+    }
     return 0
+  }
+}
+
+/**
+ * Busca a avaliação média de um curso do Firestore
+ */
+export const getCourseRating = async (courseId) => {
+  try {
+    // Importar Firestore dinamicamente para evitar problemas de inicialização
+    const { db } = await import('./firebase')
+    const { collection, getDocs } = await import('firebase/firestore')
+    
+    // Buscar avaliações do curso
+    const ratingsRef = collection(db, 'courses', courseId, 'ratings')
+    const snapshot = await getDocs(ratingsRef)
+    
+    if (snapshot.empty) {
+      return { average: 0, count: 0 }
+    }
+    
+    let total = 0
+    let count = 0
+    
+    snapshot.forEach((doc) => {
+      const data = doc.data()
+      total += data.rating || 0
+      count++
+    })
+    
+    return {
+      average: count > 0 ? total / count : 0,
+      count: count
+    }
+  } catch (error) {
+    // Silenciar erros de permissão
+    if (error.code !== 'permission-denied') {
+      console.error('Erro ao buscar avaliações:', error)
+    }
+    return { average: 0, count: 0 }
   }
 }
 
@@ -394,15 +437,24 @@ export const getAllJourneys = async () => {
       // Buscar cursos da jornada
       const journeyCourses = courses.filter(c => journey.courses.includes(c.id))
       
-      // Calcular estatísticas da jornada
-      const totalStudents = await Promise.all(
+      // Calcular estatísticas da jornada e buscar avaliações
+      const coursesWithStats = await Promise.all(
         journeyCourses.map(async (course) => {
-          return await getCourseStudentsCount(course.id)
+          const studentsCount = await getCourseStudentsCount(course.id)
+          const rating = await getCourseRating(course.id)
+          return {
+            ...course,
+            students: studentsCount,
+            rating: rating.average,
+            ratingCount: rating.count,
+            type: 'course'
+          }
         })
       )
-      const studentsCount = totalStudents.reduce((sum, count) => sum + count, 0)
-      const totalLessons = journeyCourses.reduce((sum, course) => sum + (course.lessons || 0), 0)
-      const totalDuration = journeyCourses.reduce((sum, course) => {
+      
+      const studentsCount = coursesWithStats.reduce((sum, course) => sum + (course.students || 0), 0)
+      const totalLessons = coursesWithStats.reduce((sum, course) => sum + (course.lessons || 0), 0)
+      const totalDuration = coursesWithStats.reduce((sum, course) => {
         const hours = parseFloat(course.duration?.replace(' horas', '')) || 0
         return sum + hours
       }, 0)
@@ -410,11 +462,11 @@ export const getAllJourneys = async () => {
       return {
         ...journey,
         students: studentsCount,
-        coursesCount: journeyCourses.length,
+        coursesCount: coursesWithStats.length,
         totalLessons,
         totalDuration: `${totalDuration} horas`,
         type: 'journey',
-        courses: journeyCourses
+        courses: coursesWithStats
       }
     })
   )
@@ -431,15 +483,24 @@ export const getJourneyById = async (journeyId) => {
   // Buscar cursos da jornada
   const journeyCourses = courses.filter(c => journey.courses.includes(c.id))
   
-  // Calcular estatísticas
-  const totalStudents = await Promise.all(
+  // Calcular estatísticas e buscar avaliações
+  const coursesWithStats = await Promise.all(
     journeyCourses.map(async (course) => {
-      return await getCourseStudentsCount(course.id)
+      const studentsCount = await getCourseStudentsCount(course.id)
+      const rating = await getCourseRating(course.id)
+      return {
+        ...course,
+        students: studentsCount,
+        rating: rating.average,
+        ratingCount: rating.count,
+        type: 'course'
+      }
     })
   )
-  const studentsCount = totalStudents.reduce((sum, count) => sum + count, 0)
-  const totalLessons = journeyCourses.reduce((sum, course) => sum + (course.lessons || 0), 0)
-  const totalDuration = journeyCourses.reduce((sum, course) => {
+  
+  const studentsCount = coursesWithStats.reduce((sum, course) => sum + (course.students || 0), 0)
+  const totalLessons = coursesWithStats.reduce((sum, course) => sum + (course.lessons || 0), 0)
+  const totalDuration = coursesWithStats.reduce((sum, course) => {
     const hours = parseFloat(course.duration?.replace(' horas', '')) || 0
     return sum + hours
   }, 0)
@@ -447,11 +508,11 @@ export const getJourneyById = async (journeyId) => {
   return {
     ...journey,
     students: studentsCount,
-    coursesCount: journeyCourses.length,
+    coursesCount: coursesWithStats.length,
     totalLessons,
     totalDuration: `${totalDuration} horas`,
     type: 'journey',
-    courses: journeyCourses
+    courses: coursesWithStats
   }
 }
 
@@ -462,9 +523,12 @@ export const getAllCourses = async () => {
   const coursesData = await Promise.all(
     courses.map(async (course) => {
       const studentsCount = await getCourseStudentsCount(course.id)
+      const rating = await getCourseRating(course.id)
       return {
         ...course,
         students: studentsCount,
+        rating: rating.average,
+        ratingCount: rating.count,
         type: 'course',
       }
     })
@@ -480,10 +544,13 @@ export const getCourseById = async (courseId) => {
   if (!course) return null
 
   const studentsCount = await getCourseStudentsCount(courseId)
+  const rating = await getCourseRating(courseId)
 
   return {
     ...course,
     students: studentsCount,
+    rating: rating.average,
+    ratingCount: rating.count,
     type: 'course',
   }
 }
@@ -513,7 +580,10 @@ export const getTotalPlatformStudents = async () => {
           }
         })
       } catch (error) {
+        // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+        if (error.code !== 'permission-denied') {
         console.error(`Erro ao buscar alunos do curso ${course.id}:`, error)
+        }
         // Continua para o próximo curso mesmo se houver erro
       }
     }

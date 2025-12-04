@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { hasAdminAccess } from '../admin/adminAccess'
-import { getProfessores, addProfessor, updateProfessor } from '../services/professoresService'
-import { compressImage } from '../services/authService'
+import { getProfessores, addProfessor, updateProfessor, deleteProfessor } from '../services/professoresService'
 import './Professores.css'
 
 function Professores() {
@@ -14,15 +13,13 @@ function Professores() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const fileInputRef = useRef(null)
   
   const [newProfessor, setNewProfessor] = useState({
     nome: '',
     profissao: '',
     descricao: '',
     briolink: '',
-    portfolio: '',
-    foto: null
+    portfolio: ''
   })
 
   const isAdmin = user && hasAdminAccess(user)
@@ -47,38 +44,6 @@ function Professores() {
       setProfessores([])
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    // Validar tipo de arquivo
-    if (!file.type.startsWith('image/')) {
-      setError('Por favor, selecione uma imagem válida')
-      return
-    }
-
-    // Validar tamanho (máximo 5MB antes da compressão)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('A imagem deve ter no máximo 5MB')
-      return
-    }
-
-    try {
-      // Comprimir imagem antes de converter para base64
-      const compressedBase64 = await compressImage(file, 800, 800, 0.8)
-      
-      if (editingProfessor) {
-        setEditingProfessor({ ...editingProfessor, foto: compressedBase64 })
-      } else {
-        setNewProfessor({ ...newProfessor, foto: compressedBase64 })
-      }
-      setError('')
-    } catch (err) {
-      console.error('Erro ao processar a imagem:', err)
-      setError('Erro ao processar a imagem. Tente novamente com outra imagem.')
     }
   }
 
@@ -109,8 +74,7 @@ function Professores() {
         profissao: newProfessor.profissao.trim(),
         descricao: newProfessor.descricao.trim(),
         briolink: newProfessor.briolink.trim(),
-        portfolio: newProfessor.portfolio.trim(),
-        foto: newProfessor.foto
+        portfolio: newProfessor.portfolio.trim()
       })
 
       if (error) {
@@ -124,8 +88,7 @@ function Professores() {
         profissao: '',
         descricao: '',
         briolink: '',
-        portfolio: '',
-        foto: null
+        portfolio: ''
       })
       setShowAddForm(false)
       
@@ -140,12 +103,15 @@ function Professores() {
   }
 
   const handleEditProfessor = (professor) => {
-    setEditingProfessor({
-      ...professor,
-      profissao: professor.especialidade || '',
-      descricao: professor.bio || ''
+    setEditingProfessor(professor)
+    setNewProfessor({
+      nome: professor.nome || '',
+      profissao: professor.especialidade || professor.profissao || '',
+      descricao: professor.bio || professor.descricao || '',
+      briolink: professor.redesSociais?.briolink || '',
+      portfolio: professor.redesSociais?.portfolio || ''
     })
-    setShowAddForm(false)
+    setShowAddForm(true)
     setError('')
     setSuccess('')
   }
@@ -155,42 +121,36 @@ function Professores() {
     setError('')
     setSuccess('')
 
-    if (!editingProfessor.nome.trim()) {
+    if (!newProfessor.nome.trim()) {
       setError('Por favor, preencha o nome do professor')
       return
     }
 
-    if (!editingProfessor.profissao.trim()) {
+    if (!newProfessor.profissao.trim()) {
       setError('Por favor, preencha a profissão do professor')
       return
     }
 
-    if (!editingProfessor.descricao.trim()) {
+    if (!newProfessor.descricao.trim()) {
       setError('Por favor, preencha a descrição do professor')
       return
     }
 
     try {
       setSubmitting(true)
-      const updateData = {
-        nome: editingProfessor.nome.trim(),
-        especialidade: editingProfessor.profissao.trim(),
-        bio: editingProfessor.descricao.trim(),
+      const { error } = await updateProfessor(editingProfessor.id, {
+        nome: newProfessor.nome.trim(),
+        especialidade: newProfessor.profissao.trim(),
+        bio: newProfessor.descricao.trim(),
         redesSociais: {
-          briolink: editingProfessor.briolink?.trim() || '',
-          portfolio: editingProfessor.portfolio?.trim() || '',
+          briolink: newProfessor.briolink.trim(),
+          portfolio: newProfessor.portfolio.trim(),
           linkedin: editingProfessor.redesSociais?.linkedin || '',
           github: editingProfessor.redesSociais?.github || '',
           twitter: editingProfessor.redesSociais?.twitter || '',
           instagram: editingProfessor.redesSociais?.instagram || ''
         }
-      }
-
-      if (editingProfessor.foto) {
-        updateData.foto = editingProfessor.foto
-      }
-
-      const { error } = await updateProfessor(editingProfessor.id, updateData)
+      })
 
       if (error) {
         setError(error)
@@ -199,8 +159,15 @@ function Professores() {
 
       setSuccess('Professor atualizado com sucesso!')
       setEditingProfessor(null)
+      setNewProfessor({
+        nome: '',
+        profissao: '',
+        descricao: '',
+        briolink: '',
+        portfolio: ''
+      })
+      setShowAddForm(false)
       
-      // Recarregar lista de professores
       await loadProfessores()
     } catch (err) {
       console.error('Erro ao atualizar professor:', err)
@@ -210,10 +177,38 @@ function Professores() {
     }
   }
 
+  const handleDeleteProfessor = async (professorId) => {
+    if (!window.confirm('Tem certeza que deseja remover este professor?')) {
+      return
+    }
+
+    try {
+      const { error } = await deleteProfessor(professorId)
+      if (error) {
+        setError(error)
+        return
+      }
+
+      setSuccess('Professor removido com sucesso!')
+      await loadProfessores()
+    } catch (err) {
+      console.error('Erro ao remover professor:', err)
+      setError('Erro ao remover professor. Tente novamente.')
+    }
+  }
+
   const handleCancelEdit = () => {
     setEditingProfessor(null)
+    setShowAddForm(false)
     setError('')
     setSuccess('')
+    setNewProfessor({
+      nome: '',
+      profissao: '',
+      descricao: '',
+      briolink: '',
+      portfolio: ''
+    })
   }
 
   if (loading) {
@@ -263,33 +258,8 @@ function Professores() {
 
         {isAdmin && showAddForm && (
           <div className="add-professor-form-container">
-            <h2>Adicionar Novo Professor</h2>
-            <form onSubmit={handleAddProfessor} className="add-professor-form">
-              <div className="form-group">
-                <label htmlFor="professor-foto">Foto do Professor</label>
-                <div className="photo-upload-container">
-                  {newProfessor.foto ? (
-                    <img src={newProfessor.foto} alt="Preview" className="photo-preview" />
-                  ) : (
-                    <div className="photo-placeholder">📷</div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="btn btn-secondary"
-                  >
-                    {newProfessor.foto ? 'Alterar Foto' : 'Adicionar Foto'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-              </div>
-
+            <h2>{editingProfessor ? 'Editar Professor' : 'Adicionar Novo Professor'}</h2>
+            <form onSubmit={editingProfessor ? handleUpdateProfessor : handleAddProfessor} className="add-professor-form">
               <div className="form-group">
                 <label htmlFor="professor-nome">Nome *</label>
                 <input
@@ -354,140 +324,7 @@ function Professores() {
                   className="btn btn-primary"
                   disabled={submitting}
                 >
-                  {submitting ? 'Salvando...' : 'Adicionar Professor'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => {
-                    setShowAddForm(false)
-                    setError('')
-                    setSuccess('')
-                    setNewProfessor({
-                      nome: '',
-                      profissao: '',
-                      descricao: '',
-                      briolink: '',
-                      portfolio: '',
-                      foto: null
-                    })
-                  }}
-                  className="btn btn-secondary"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {isAdmin && editingProfessor && (
-          <div className="add-professor-form-container">
-            <h2>Editar Professor</h2>
-            <form onSubmit={handleUpdateProfessor} className="add-professor-form">
-              <div className="form-group">
-                <label htmlFor="edit-professor-foto">Foto do Professor</label>
-                <div className="photo-upload-container">
-                  {editingProfessor.foto ? (
-                    <img src={editingProfessor.foto} alt="Preview" className="photo-preview" />
-                  ) : (
-                    <div className="photo-placeholder">📷</div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="btn btn-secondary"
-                  >
-                    {editingProfessor.foto ? 'Alterar Foto' : 'Adicionar Foto'}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-professor-nome">Nome *</label>
-                <input
-                  type="text"
-                  id="edit-professor-nome"
-                  value={editingProfessor.nome}
-                  onChange={(e) => setEditingProfessor({ ...editingProfessor, nome: e.target.value })}
-                  placeholder="Ex: Joaquim Cesar Francisco Marques"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-professor-profissao">Profissão *</label>
-                <input
-                  type="text"
-                  id="edit-professor-profissao"
-                  value={editingProfessor.profissao}
-                  onChange={(e) => setEditingProfessor({ ...editingProfessor, profissao: e.target.value })}
-                  placeholder="Ex: Desenvolvedor Front-end"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-professor-descricao">Descrição *</label>
-                <textarea
-                  id="edit-professor-descricao"
-                  value={editingProfessor.descricao}
-                  onChange={(e) => setEditingProfessor({ ...editingProfessor, descricao: e.target.value })}
-                  placeholder="Ex: Desenvolvedor Front-end há 4 anos e estudante do IPIL. Apaixonado por criar experiências web incríveis."
-                  rows="4"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-professor-briolink">BrioLink</label>
-                <input
-                  type="url"
-                  id="edit-professor-briolink"
-                  value={editingProfessor.briolink || editingProfessor.redesSociais?.briolink || ''}
-                  onChange={(e) => setEditingProfessor({ 
-                    ...editingProfessor, 
-                    briolink: e.target.value,
-                    redesSociais: {
-                      ...editingProfessor.redesSociais,
-                      briolink: e.target.value
-                    }
-                  })}
-                  placeholder="https://briolinke.vercel.app/"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="edit-professor-portfolio">Portfólio</label>
-                <input
-                  type="url"
-                  id="edit-professor-portfolio"
-                  value={editingProfessor.portfolio || editingProfessor.redesSociais?.portfolio || ''}
-                  onChange={(e) => setEditingProfessor({ 
-                    ...editingProfessor, 
-                    portfolio: e.target.value,
-                    redesSociais: {
-                      ...editingProfessor.redesSociais,
-                      portfolio: e.target.value
-                    }
-                  })}
-                  placeholder="https://portifolio1dev.netlify.app"
-                />
-              </div>
-
-              <div className="form-actions">
-                <button 
-                  type="submit" 
-                  className="btn btn-primary"
-                  disabled={submitting}
-                >
-                  {submitting ? 'Salvando...' : 'Salvar Alterações'}
+                  {submitting ? 'Salvando...' : (editingProfessor ? 'Salvar Alterações' : 'Adicionar Professor')}
                 </button>
                 <button 
                   type="button" 
@@ -496,6 +333,16 @@ function Professores() {
                 >
                   Cancelar
                 </button>
+                {editingProfessor && (
+                  <button 
+                    type="button" 
+                    onClick={() => handleDeleteProfessor(editingProfessor.id)}
+                    className="btn btn-danger"
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    🗑️ Remover
+                  </button>
+                )}
               </div>
             </form>
           </div>
@@ -505,26 +352,20 @@ function Professores() {
           {professores.map((professor) => (
             <div key={professor.id} className="professor-card">
               {isAdmin && (
-                <button
-                  onClick={() => handleEditProfessor(professor)}
-                  className="btn-edit-professor"
-                  title="Editar professor"
-                >
-                  ✏️ Editar
-                </button>
+                <div className="professor-admin-actions">
+                  <button 
+                    onClick={() => handleEditProfessor(professor)}
+                    className="btn-edit-professor"
+                    title="Editar professor"
+                  >
+                    ✏️ Editar
+                  </button>
+                </div>
               )}
               <div className="professor-avatar">
-                {professor.foto ? (
-                  <img 
-                    src={professor.foto} 
-                    alt={professor.nome}
-                    className="professor-foto"
-                  />
-                ) : (
-                  <div className="professor-foto-placeholder">
-                    👨‍🏫
-                  </div>
-                )}
+                <div className="professor-foto-placeholder">
+                  👨‍🏫
+                </div>
               </div>
               <div className="professor-info">
                 <h3 className="professor-nome">{professor.nome}</h3>
@@ -541,7 +382,7 @@ function Professores() {
                 )}
                 <p className="professor-bio">{professor.bio}</p>
                 <div className="professor-redes-sociais">
-                  {professor.redesSociais?.briolink ? (
+                  {professor.redesSociais.briolink ? (
                     <a 
                       href={professor.redesSociais.briolink} 
                       target="_blank" 
@@ -560,7 +401,7 @@ function Professores() {
                       🔗 briolink
                     </button>
                   )}
-                  {professor.redesSociais?.portfolio ? (
+                  {professor.redesSociais.portfolio ? (
                     <a 
                       href={professor.redesSociais.portfolio} 
                       target="_blank" 

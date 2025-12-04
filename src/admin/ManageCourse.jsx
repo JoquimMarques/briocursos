@@ -46,7 +46,16 @@ function ManageCourse() {
     try {
       setLoading(true)
       const courseRef = doc(db, 'courses', id)
-      const courseSnap = await getDoc(courseRef)
+      let courseSnap
+      try {
+        courseSnap = await getDoc(courseRef)
+      } catch (err) {
+        // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+        if (err.code !== 'permission-denied') {
+          throw err
+        }
+        courseSnap = { exists: () => false }
+      }
 
       if (courseSnap.exists()) {
         const data = courseSnap.data()

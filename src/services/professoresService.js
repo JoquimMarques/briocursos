@@ -16,20 +16,33 @@ import { db } from './firebase'
 export const getProfessores = async () => {
   try {
     const professoresRef = collection(db, 'professores')
-    const q = query(professoresRef, orderBy('createdAt', 'desc'))
-    const querySnapshot = await getDocs(q)
+    // Tentar com orderBy, mas fazer fallback se falhar
+    let querySnapshot
+    try {
+      const q = query(professoresRef, orderBy('createdAt', 'desc'))
+      querySnapshot = await getDocs(q)
+    } catch (orderError) {
+      // Se orderBy falhar (índice não criado ou campo não existe), buscar sem ordenação
+      querySnapshot = await getDocs(professoresRef)
+    }
     
     const professores = []
     querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      // Remover campo foto se existir
+      const { foto, ...professorData } = data
       professores.push({
         id: doc.id,
-        ...doc.data()
+        ...professorData
       })
     })
     
     return { data: professores, error: null }
   } catch (error) {
-    console.error('Erro ao buscar professores:', error)
+    // Silenciar erros de permissão - as regras do Firestore precisam ser configuradas
+    if (error.code !== 'permission-denied') {
+      console.error('Erro ao buscar professores:', error)
+    }
     return { data: [], error: error.message }
   }
 }
@@ -48,7 +61,7 @@ export const addProfessor = async (professorData) => {
       experiencia: professorData.experiencia || '',
       instituicao: professorData.instituicao || '',
       cursos: professorData.cursos || [],
-      foto: professorData.foto || null,
+      // Foto removida conforme solicitado
       redesSociais: {
         briolink: professorData.briolink || '',
         portfolio: professorData.portfolio || '',
