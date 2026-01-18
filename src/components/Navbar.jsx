@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { hasAdminAccess } from '../admin/adminAccess'
-import { FaBook, FaChalkboardTeacher, FaLink, FaGraduationCap, FaUser, FaHome, FaInfoCircle, FaBars, FaTimes, FaCreditCard, FaCertificate } from 'react-icons/fa'
+import { FaBook, FaChalkboardTeacher, FaLink, FaGraduationCap, FaUser, FaHome, FaInfoCircle, FaBars, FaTimes, FaCreditCard, FaCertificate, FaChartLine } from 'react-icons/fa'
 import './Navbar.css'
 
 function Navbar() {
@@ -21,16 +21,16 @@ function Navbar() {
   return (
     <nav className="navbar">
       {isMenuOpen && (
-        <div 
+        <div
           className="menu-overlay"
           onClick={closeMenu}
         />
       )}
       <div className="navbar-container">
         <Link to="/" className="navbar-logo" onClick={closeMenu}>
-          <img 
-            src="/assets/logo.png" 
-            alt="BrioCursos Logo" 
+          <img
+            src="/assets/logo.png"
+            alt="BrioCursos Logo"
             className="logo-image"
             style={{ borderRadius: '100%' }}
             onError={(e) => {
@@ -39,8 +39,8 @@ function Navbar() {
           />
           <span className="logo-text">BrioCursos</span>
         </Link>
-        
-        <button 
+
+        <button
           className="hamburger-button"
           onClick={toggleMenu}
           aria-label="Toggle menu"
@@ -48,7 +48,7 @@ function Navbar() {
         >
           {isMenuOpen ? <FaTimes /> : <FaBars />}
         </button>
-        
+
         <ul className={`navbar-menu ${isMenuOpen ? 'navbar-menu-open' : ''}`}>
           <li className="navbar-item">
             <Link to="/" className="navbar-link" onClick={closeMenu}>
@@ -63,9 +63,9 @@ function Navbar() {
             </Link>
           </li>
           <li className="navbar-item">
-            <a 
-              href="https://briolinke.vercel.app/" 
-              target="_blank" 
+            <a
+              href="https://briolinke.vercel.app/"
+              target="_blank"
               rel="noopener noreferrer"
               className="navbar-link"
               onClick={closeMenu}
@@ -94,6 +94,12 @@ function Navbar() {
                 <Link to="/admin/certificados" className="navbar-link navbar-link-admin" onClick={closeMenu}>
                   <FaCertificate className="navbar-icon" />
                   <span>Certificados</span>
+                </Link>
+              </li>
+              <li className="navbar-item">
+                <Link to="/admin/estatisticas" className="navbar-link navbar-link-admin" onClick={closeMenu}>
+                  <FaChartLine className="navbar-icon" />
+                  <span>Estatísticas</span>
                 </Link>
               </li>
             </>

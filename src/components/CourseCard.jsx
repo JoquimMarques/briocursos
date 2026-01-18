@@ -13,6 +13,7 @@ function CourseCard({ course }) {
   const [loading, setLoading] = useState(true)
   const [paymentEnabled, setPaymentEnabled] = useState(false)
   const [coursePrice, setCoursePrice] = useState(0)
+  const [isFreeMode, setIsFreeMode] = useState(false)
 
   useEffect(() => {
     const checkEnrollment = async () => {
@@ -23,6 +24,17 @@ function CourseCard({ course }) {
       }
 
       try {
+        // Verificar modo gratuito global
+        const { getFreeModeSettings } = await import('../services/paymentService')
+        const freeMode = await getFreeModeSettings()
+
+        const now = new Date()
+        const start = freeMode.startAt ? new Date(freeMode.startAt) : null
+        const end = freeMode.endAt ? new Date(freeMode.endAt) : null
+
+        const isFreeModeActive = freeMode.isEnabled && start && end && now >= start && now <= end
+        setIsFreeMode(isFreeModeActive)
+
         // Buscar configurações de pagamento
         const { paymentEnabled: enabled, price } = await getCoursePaymentSettings(course.id)
         setPaymentEnabled(enabled)
@@ -71,6 +83,9 @@ function CourseCard({ course }) {
         {course.category && (
           <span className="course-category">{course.category}</span>
         )}
+        {isFreeMode && !isEnrolled && (
+          <span className="course-badge-free">🔥 GRÁTIS</span>
+        )}
       </div>
       <div className="course-info">
         <h3 className="course-title">{course.title}</h3>
@@ -87,10 +102,11 @@ function CourseCard({ course }) {
             )}
           </div>
           {!loading && !isEnrolled && course.type !== 'journey' && (
-            <span className={`course-price ${paymentEnabled && coursePrice > 0 ? 'paid' : 'free'}`}>
-              {paymentEnabled && coursePrice > 0
-                ? `${coursePrice.toLocaleString('pt-AO')} Kz`
-                : 'Grátis'}
+            <span className={`course-price ${isFreeMode ? 'free-mode' : (paymentEnabled && coursePrice > 0 ? 'paid' : 'free')}`}>
+              {isFreeMode
+                ? 'GRÁTIS (Tempo Limitado)'
+                : (paymentEnabled && coursePrice > 0 ? `${coursePrice.toLocaleString('pt-AO')} Kz` : 'Grátis')
+              }
             </span>
           )}
           {!loading && isEnrolled && (

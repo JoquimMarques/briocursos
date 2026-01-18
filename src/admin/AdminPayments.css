@@ -583,3 +583,143 @@
     font-size: 0.85rem;
   }
 }
+
+/* Free Mode Section */
+.free-mode-section {
+  margin-bottom: 2rem;
+}
+
+.free-mode-section h2 {
+  color: white;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.free-mode-card {
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(22, 33, 62, 0.5) 100%);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.free-mode-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Status specific group shouldn't stretch too much if not needed, but flex:1 is fine */
+/* removed first-child rule to prevent overlap */
+
+.form-group label {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.form-group input[type="datetime-local"] {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-family: inherit;
+  color-scheme: dark;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  height: 46px;
+  /* Match input height roughly */
+}
+
+.toggle-switch input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.toggle-label {
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 90px;
+}
+
+.btn-save-free-mode {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  border: none;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 46px;
+  /* Align with inputs */
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.btn-save-free-mode:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+}
+
+.btn-save-free-mode:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.free-mode-info {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+  margin: 0;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  line-height: 1.5;
+}
+
+@media (max-width: 1024px) {
+  .free-mode-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .btn-save-free-mode {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 600px) {
+  .free-mode-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .btn-save-free-mode {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+  }
+}

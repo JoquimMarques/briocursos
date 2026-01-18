@@ -374,6 +374,22 @@ function CoursePlayer() {
 
   const checkPaymentSettings = async () => {
     try {
+      // Verificar modo gratuito global
+      const { getFreeModeSettings } = await import('../services/paymentService')
+      const freeMode = await getFreeModeSettings()
+
+      const now = new Date()
+      const start = freeMode.startAt ? new Date(freeMode.startAt) : null
+      const end = freeMode.endAt ? new Date(freeMode.endAt) : null
+
+      const isFreeModeActive = freeMode.isEnabled && start && end && now >= start && now <= end
+
+      if (isFreeModeActive) {
+        setPaymentRequired(false)
+        setCoursePrice(0)
+        return
+      }
+
       const { paymentEnabled, price } = await getCoursePaymentSettings(id)
       setPaymentRequired(paymentEnabled)
       setCoursePrice(price)

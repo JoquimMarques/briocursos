@@ -1,7 +1,7 @@
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
+import {
+  doc,
+  setDoc,
+  getDoc,
   updateDoc,
   collection,
   getDocs,
@@ -30,7 +30,7 @@ export const getCoursePaymentSettings = async (courseId) => {
   try {
     const courseRef = doc(db, 'courses', courseId)
     const courseSnap = await getDoc(courseRef)
-    
+
     if (courseSnap.exists()) {
       const data = courseSnap.data()
       return {
@@ -39,7 +39,7 @@ export const getCoursePaymentSettings = async (courseId) => {
         error: null
       }
     }
-    
+
     return { paymentEnabled: false, price: 0, error: null }
   } catch (error) {
     console.error('Erro ao buscar configurações de pagamento:', error)
@@ -54,19 +54,19 @@ export const updateCoursePaymentSettings = async (courseId, { paymentEnabled, pr
   try {
     const courseRef = doc(db, 'courses', courseId)
     const courseSnap = await getDoc(courseRef)
-    
+
     const updateData = {
       paymentEnabled: paymentEnabled,
       price: price || 0,
       updatedAt: new Date().toISOString()
     }
-    
+
     if (courseSnap.exists()) {
       await updateDoc(courseRef, updateData)
     } else {
       await setDoc(courseRef, updateData, { merge: true })
     }
-    
+
     return { error: null }
   } catch (error) {
     console.error('Erro ao atualizar configurações de pagamento:', error)
@@ -81,7 +81,7 @@ export const createPaymentOrder = async (userId, userEmail, userName, courseId, 
   try {
     const orderId = `${userId}_${courseId}_${Date.now()}`
     const orderRef = doc(db, 'paymentOrders', orderId)
-    
+
     await setDoc(orderRef, {
       orderId,
       userId,
@@ -94,7 +94,7 @@ export const createPaymentOrder = async (userId, userEmail, userName, courseId, 
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     })
-    
+
     return { orderId, error: null }
   } catch (error) {
     console.error('Erro ao criar pedido de pagamento:', error)
@@ -114,7 +114,7 @@ export const hasApprovedPayment = async (userId, courseId) => {
       where('courseId', '==', courseId),
       where('status', '==', PAYMENT_STATUS.APPROVED)
     )
-    
+
     const snapshot = await getDocs(q)
     return !snapshot.empty
   } catch (error) {
@@ -134,13 +134,13 @@ export const getUserPaymentStatus = async (userId, courseId) => {
       where('userId', '==', userId),
       where('courseId', '==', courseId)
     )
-    
+
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       return { status: null, order: null, error: null }
     }
-    
+
     // Retornar o pedido mais recente
     let latestOrder = null
     snapshot.forEach((doc) => {
@@ -149,7 +149,7 @@ export const getUserPaymentStatus = async (userId, courseId) => {
         latestOrder = { id: doc.id, ...data }
       }
     })
-    
+
     return { status: latestOrder?.status, order: latestOrder, error: null }
   } catch (error) {
     console.error('Erro ao buscar status do pagamento:', error)
@@ -164,14 +164,14 @@ export const getAllPaymentOrders = async () => {
   try {
     const ordersRef = collection(db, 'paymentOrders')
     const q = query(ordersRef, orderBy('createdAt', 'desc'))
-    
+
     const snapshot = await getDocs(q)
     const orders = []
-    
+
     snapshot.forEach((doc) => {
       orders.push({ id: doc.id, ...doc.data() })
     })
-    
+
     return { orders, error: null }
   } catch (error) {
     console.error('Erro ao buscar pedidos de pagamento:', error)
@@ -190,14 +190,14 @@ export const getPendingPaymentOrders = async () => {
       where('status', '==', PAYMENT_STATUS.AWAITING_VERIFICATION),
       orderBy('createdAt', 'desc')
     )
-    
+
     const snapshot = await getDocs(q)
     const orders = []
-    
+
     snapshot.forEach((doc) => {
       orders.push({ id: doc.id, ...doc.data() })
     })
-    
+
     return { orders, error: null }
   } catch (error) {
     // Se o índice não existe, tentar sem orderBy
@@ -208,24 +208,24 @@ export const getPendingPaymentOrders = async () => {
           ordersRef,
           where('status', '==', PAYMENT_STATUS.AWAITING_VERIFICATION)
         )
-        
+
         const snapshot = await getDocs(q)
         const orders = []
-        
+
         snapshot.forEach((doc) => {
           orders.push({ id: doc.id, ...doc.data() })
         })
-        
+
         // Ordenar manualmente
         orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        
+
         return { orders, error: null }
       } catch (fallbackError) {
         console.error('Erro ao buscar pedidos pendentes:', fallbackError)
         return { orders: [], error: fallbackError.message }
       }
     }
-    
+
     console.error('Erro ao buscar pedidos pendentes:', error)
     return { orders: [], error: error.message }
   }
@@ -238,18 +238,18 @@ export const approvePaymentOrder = async (orderId, adminId) => {
   try {
     const orderRef = doc(db, 'paymentOrders', orderId)
     const orderSnap = await getDoc(orderRef)
-    
+
     if (!orderSnap.exists()) {
       return { error: 'Pedido não encontrado' }
     }
-    
+
     await updateDoc(orderRef, {
       status: PAYMENT_STATUS.APPROVED,
       approvedBy: adminId,
       approvedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     })
-    
+
     return { error: null }
   } catch (error) {
     console.error('Erro ao aprovar pagamento:', error)
@@ -264,11 +264,11 @@ export const rejectPaymentOrder = async (orderId, adminId, reason = '') => {
   try {
     const orderRef = doc(db, 'paymentOrders', orderId)
     const orderSnap = await getDoc(orderRef)
-    
+
     if (!orderSnap.exists()) {
       return { error: 'Pedido não encontrado' }
     }
-    
+
     await updateDoc(orderRef, {
       status: PAYMENT_STATUS.REJECTED,
       rejectedBy: adminId,
@@ -276,7 +276,7 @@ export const rejectPaymentOrder = async (orderId, adminId, reason = '') => {
       rejectionReason: reason,
       updatedAt: new Date().toISOString()
     })
-    
+
     return { error: null }
   } catch (error) {
     console.error('Erro ao rejeitar pagamento:', error)
@@ -310,7 +310,7 @@ export const createCertificatePaymentOrder = async (userId, userEmail, userName,
   try {
     const orderId = `cert_${userId}_${courseId}_${Date.now()}`
     const orderRef = doc(db, 'paymentOrders', orderId)
-    
+
     await setDoc(orderRef, {
       orderId,
       userId,
@@ -324,7 +324,7 @@ export const createCertificatePaymentOrder = async (userId, userEmail, userName,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     })
-    
+
     return { orderId, error: null }
   } catch (error) {
     console.error('Erro ao criar pedido de pagamento de certificado:', error)
@@ -345,7 +345,7 @@ export const hasApprovedCertificatePayment = async (userId, courseId) => {
       where('paymentType', '==', 'certificate'),
       where('status', '==', PAYMENT_STATUS.APPROVED)
     )
-    
+
     const snapshot = await getDocs(q)
     return !snapshot.empty
   } catch (error) {
@@ -366,13 +366,13 @@ export const getUserCertificatePaymentStatus = async (userId, courseId) => {
       where('courseId', '==', courseId),
       where('paymentType', '==', 'certificate')
     )
-    
+
     const snapshot = await getDocs(q)
-    
+
     if (snapshot.empty) {
       return { status: null, order: null, error: null }
     }
-    
+
     // Retornar o pedido mais recente
     let latestOrder = null
     snapshot.forEach((doc) => {
@@ -381,13 +381,67 @@ export const getUserCertificatePaymentStatus = async (userId, courseId) => {
         latestOrder = { id: doc.id, ...data }
       }
     })
-    
+
     return { status: latestOrder?.status, order: latestOrder, error: null }
   } catch (error) {
     console.error('Erro ao buscar status do pagamento de certificado:', error)
     return { status: null, order: null, error: error.message }
   }
 }
+
+
+// ========== CONFIGURAÇÕES DE MODO GRATUITO (FREE MODE) ==========
+
+/**
+ * Busca as configurações do modo gratuito global
+ */
+export const getFreeModeSettings = async () => {
+  try {
+    const settingsRef = doc(db, 'settings', 'freeMode')
+    const settingsSnap = await getDoc(settingsRef)
+
+    if (settingsSnap.exists()) {
+      return {
+        ...settingsSnap.data(),
+        error: null
+      }
+    }
+
+    return {
+      isEnabled: false,
+      startAt: null,
+      endAt: null,
+      error: null
+    }
+  } catch (error) {
+    console.error('Erro ao buscar configurações do modo gratuito:', error)
+    return { isEnabled: false, startAt: null, endAt: null, error: error.message }
+  }
+}
+
+/**
+ * Atualiza as configurações do modo gratuito global (admin)
+ */
+export const updateFreeModeSettings = async ({ isEnabled, startAt, endAt }) => {
+  try {
+    const settingsRef = doc(db, 'settings', 'freeMode')
+
+    const updateData = {
+      isEnabled,
+      startAt: startAt || null,
+      endAt: endAt || null,
+      updatedAt: new Date().toISOString()
+    }
+
+    await setDoc(settingsRef, updateData, { merge: true })
+
+    return { error: null }
+  } catch (error) {
+    console.error('Erro ao atualizar configurações do modo gratuito:', error)
+    return { error: error.message }
+  }
+}
+
 
 export default {
   PAYMENT_IBAN,
@@ -405,6 +459,7 @@ export default {
   deletePaymentOrder,
   createCertificatePaymentOrder,
   hasApprovedCertificatePayment,
-  getUserCertificatePaymentStatus
+  getUserCertificatePaymentStatus,
+  getFreeModeSettings,
+  updateFreeModeSettings
 }
-

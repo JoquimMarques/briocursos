@@ -15,6 +15,7 @@ import AdminRoute from './admin/AdminRoute'
 import ManageCourse from './admin/ManageCourse'
 import AdminPayments from './admin/AdminPayments'
 import AdminCertificates from './admin/AdminCertificates'
+import AdminStats from './admin/AdminStats'
 import { updateCoursePaymentSettings } from './services/paymentService'
 import './App.css'
 
@@ -28,25 +29,25 @@ const initPayments = async () => {
         paymentEnabled: true,
         price: 500
       })
-      
+
       // HTML - 1000 Kz
       await updateCoursePaymentSettings('html', {
         paymentEnabled: true,
         price: 1000
       })
-      
+
       // CSS - 900 Kz
       await updateCoursePaymentSettings('css', {
         paymentEnabled: true,
         price: 900
       })
-      
+
       // JavaScript - 1500 Kz
       await updateCoursePaymentSettings('javascript', {
         paymentEnabled: true,
         price: 1500
       })
-      
+
       localStorage.setItem(key, Date.now().toString())
       console.log('✅ Pagamentos inicializados!')
     } catch (e) {
@@ -60,12 +61,12 @@ function AppContent() {
   const isCoursePage = location.pathname.startsWith('/curso/')
   const isJourneyPage = location.pathname.startsWith('/jornada/')
   const hideNavbar = isCoursePage || isJourneyPage
-  
+
   // Inicializar pagamentos na primeira carga
   useEffect(() => {
     initPayments()
   }, [])
-  
+
   return (
     <div className="App">
       {!hideNavbar && <Navbar />}
@@ -83,6 +84,7 @@ function AppContent() {
           <Route path="/curso/:id/gerenciar" element={<ManageCourse />} />
           <Route path="/admin/pagamentos" element={<AdminPayments />} />
           <Route path="/admin/certificados" element={<AdminCertificates />} />
+          <Route path="/admin/estatisticas" element={<AdminStats />} />
         </Route>
       </Routes>
       {!hideNavbar && <Footer />}

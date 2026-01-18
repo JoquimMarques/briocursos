@@ -108,6 +108,84 @@ function Home() {
     })
   }
 
+
+  // ========== FREE MODE LOGIC ==========
+  const [freeMode, setFreeMode] = useState({
+    isEnabled: false,
+    isActive: false, // is currently within the time window
+    endTime: null,
+    timeLeft: ''
+  })
+
+  // Verificar modo gratuito
+  useEffect(() => {
+    const checkFreeMode = async () => {
+      try {
+        const { getFreeModeSettings } = await import('../services/paymentService')
+        const settings = await getFreeModeSettings()
+
+        if (settings && settings.isEnabled) {
+          const now = new Date()
+          const start = settings.startAt ? new Date(settings.startAt) : null
+          const end = settings.endAt ? new Date(settings.endAt) : null
+
+          const isActive = start && end && now >= start && now <= end
+
+          setFreeMode({
+            isEnabled: true,
+            isActive,
+            endTime: isActive ? end : start, // Se ativo, conta até o fim. Se não, conta até o início (se futuro)
+            // Se já passou, não mostra
+            isFinished: end && now > end
+          })
+        }
+      } catch (err) {
+        console.error('Erro ao verificar modo grátis:', err)
+      }
+    }
+
+    checkFreeMode()
+    // Verificar periodicamente (a cada 1 min)
+    const interval = setInterval(checkFreeMode, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Timer regressivo
+  useEffect(() => {
+    if (!freeMode.isEnabled || (!freeMode.isActive && !freeMode.endTime) || freeMode.isFinished) return
+
+    const updateTimer = () => {
+      const now = new Date()
+      const target = new Date(freeMode.endTime)
+      const diff = target - now
+
+      if (diff <= 0) {
+        setFreeMode(prev => ({ ...prev, timeLeft: '00:00:00' }))
+        return
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+      let timeStr = ''
+      if (days > 0) {
+        timeStr = `${days}d `
+      }
+      timeStr += `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+
+      setFreeMode(prev => ({
+        ...prev,
+        timeLeft: timeStr
+      }))
+    }
+
+    updateTimer()
+    const timer = setInterval(updateTimer, 1000)
+    return () => clearInterval(timer)
+  }, [freeMode.isEnabled, freeMode.isActive, freeMode.endTime, freeMode.isFinished])
+
   return (
     <div className="home">
       <section className="hero">
@@ -121,8 +199,23 @@ function Home() {
               Cursos gratuitos e completos em diversas áreas: Programação, Cibersegurança, Designer Gráfico, Matemática...
             </p>
             <p className="hero-stats">
-              🎯 Meta: 100 pessoas • ✅ 112+ já iniciaram!
+              🎯 Meta: 100 pessoas • ✅ 150+ já iniciaram!
             </p>
+
+            {/* COUNTDOWN TIMER FOR FREE MODE */}
+            {freeMode.isEnabled && !freeMode.isFinished && freeMode.timeLeft && (
+              <div className="free-mode-banner fade-in">
+                <div className="free-mode-content">
+                  <span className="free-mode-icon">🎁</span>
+                  <div className="free-mode-text">
+                    <span className="free-mode-label">
+                      {freeMode.isActive ? 'TUDO LIBERADO! GRÁTIS POR:' : 'HORÁRIO GRÁTIS COMEÇA EM:'}
+                    </span>
+                    <span className="free-mode-timer">{freeMode.timeLeft}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div
               className="scroll-indicator"

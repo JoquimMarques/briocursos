@@ -8,7 +8,9 @@ import {
   approvePaymentOrder,
   rejectPaymentOrder,
   deletePaymentOrder,
-  updateCoursePaymentSettings
+  updateCoursePaymentSettings,
+  getFreeModeSettings,
+  updateFreeModeSettings
 } from '../services/paymentService'
 import './AdminPayments.css'
 
@@ -22,25 +24,25 @@ const initializePayments = async () => {
         paymentEnabled: true,
         price: 500
       })
-      
+
       // HTML: 1000 Kz
       await updateCoursePaymentSettings('html', {
         paymentEnabled: true,
         price: 1000
       })
-      
+
       // CSS: 900 Kz
       await updateCoursePaymentSettings('css', {
         paymentEnabled: true,
         price: 900
       })
-      
+
       // JavaScript: 1500 Kz
       await updateCoursePaymentSettings('javascript', {
         paymentEnabled: true,
         price: 1500
       })
-      
+
       localStorage.setItem('payments_initialized_v4', 'true')
       console.log('✅ Todos os pagamentos configurados!')
     } catch (error) {
@@ -60,6 +62,14 @@ function AdminPayments() {
   const [rejectModal, setRejectModal] = useState({ open: false, orderId: null })
   const [rejectReason, setRejectReason] = useState('')
 
+  // Estados para o Modo Gratuito
+  const [freeModeSettings, setFreeModeSettings] = useState({
+    isEnabled: false,
+    startAt: '',
+    endAt: ''
+  })
+  const [savingFreeMode, setSavingFreeMode] = useState(false)
+
   useEffect(() => {
     if (!authLoading && (!user || !hasAdminAccess(user))) {
       navigate('/')
@@ -70,8 +80,32 @@ function AdminPayments() {
       // Inicializar pagamento do Portugol Studio (500 Kz)
       initializePayments()
       loadOrders()
+      loadFreeModeSettings()
     }
   }, [user, authLoading, navigate])
+
+  const loadFreeModeSettings = async () => {
+    try {
+      const settings = await getFreeModeSettings()
+
+      // Formatar datas para o input datetime-local (YYYY-MM-DDThh:mm)
+      const formatForInput = (isoString) => {
+        if (!isoString) return ''
+        const date = new Date(isoString)
+        return new Date(date.getTime() - (date.getTimezoneOffset() * 60000))
+          .toISOString()
+          .slice(0, 16)
+      }
+
+      setFreeModeSettings({
+        isEnabled: settings.isEnabled || false,
+        startAt: formatForInput(settings.startAt),
+        endAt: formatForInput(settings.endAt)
+      })
+    } catch (err) {
+      console.error('Erro ao carregar configurações do modo gratuito:', err)
+    }
+  }
 
   const loadOrders = async () => {
     setLoading(true)
@@ -79,7 +113,7 @@ function AdminPayments() {
 
     try {
       const { orders: fetchedOrders, error: fetchError } = await getAllPaymentOrders()
-      
+
       if (fetchError) {
         setError(fetchError)
       } else {
@@ -93,18 +127,58 @@ function AdminPayments() {
     }
   }
 
+  const handleSaveFreeMode = async () => {
+    setSavingFreeMode(true)
+    try {
+      // Converter inputs de volta para ISO string
+      const startAtISO = freeModeSettings.startAt ? new Date(freeModeSettings.startAt).toISOString() : null
+      const endAtISO = freeModeSettings.endAt ? new Date(freeModeSettings.endAt).toISOString() : null
+
+      // Validar datas se estiver ativando
+      if (freeModeSettings.isEnabled) {
+        if (!startAtISO || !endAtISO) {
+          alert('Por favor, defina data de início e fim para ativar.')
+          setSavingFreeMode(false)
+          return
+        }
+        if (new Date(endAtISO) <= new Date(startAtISO)) {
+          alert('A data de fim deve ser posterior à data de início.')
+          setSavingFreeMode(false)
+          return
+        }
+      }
+
+      const { error } = await updateFreeModeSettings({
+        isEnabled: freeModeSettings.isEnabled,
+        startAt: startAtISO,
+        endAt: endAtISO
+      })
+
+      if (error) {
+        alert('Erro ao salvar configurações do modo gratuito: ' + error)
+      } else {
+        alert('Configurações do modo gratuito atualizadas com sucesso!')
+      }
+    } catch (err) {
+      console.error('Erro ao salvar modo gratuito:', err)
+      alert('Erro ao salvar configurações.')
+    } finally {
+      setSavingFreeMode(false)
+    }
+  }
+
   const handleApprove = async (orderId) => {
     setProcessing(prev => ({ ...prev, [orderId]: 'approving' }))
 
     try {
       const { error: approveError } = await approvePaymentOrder(orderId, user.uid)
-      
+
       if (approveError) {
         setError(approveError)
       } else {
         // Atualizar lista local
-        setOrders(prev => prev.map(order => 
-          order.id === orderId 
+        setOrders(prev => prev.map(order =>
+          order.id === orderId
             ? { ...order, status: PAYMENT_STATUS.APPROVED, approvedAt: new Date().toISOString() }
             : order
         ))
@@ -125,12 +199,12 @@ function AdminPayments() {
 
     try {
       const { error: rejectError } = await rejectPaymentOrder(orderId, user.uid, rejectReason)
-      
+
       if (rejectError) {
         setError(rejectError)
       } else {
-        setOrders(prev => prev.map(order => 
-          order.id === orderId 
+        setOrders(prev => prev.map(order =>
+          order.id === orderId
             ? { ...order, status: PAYMENT_STATUS.REJECTED, rejectedAt: new Date().toISOString(), rejectionReason: rejectReason }
             : order
         ))
@@ -152,7 +226,7 @@ function AdminPayments() {
 
     try {
       const { error: deleteError } = await deletePaymentOrder(orderId)
-      
+
       if (deleteError) {
         setError(deleteError)
       } else {
@@ -237,6 +311,59 @@ function AdminPayments() {
           </button>
         </div>
 
+        {/* --- SECTION: CONFIGURAR HORÁRIO GRÁTIS --- */}
+        <div className="free-mode-section">
+          <h2>🎉 Configurar Horário Grátis</h2>
+          <div className="free-mode-card">
+            <div className="free-mode-controls">
+              <div className="form-group">
+                <label>Status:</label>
+                <div className="toggle-switch">
+                  <input
+                    type="checkbox"
+                    id="freeModeToggle"
+                    checked={freeModeSettings.isEnabled}
+                    onChange={(e) => setFreeModeSettings({ ...freeModeSettings, isEnabled: e.target.checked })}
+                  />
+                  <label htmlFor="freeModeToggle" className="toggle-label">
+                    {freeModeSettings.isEnabled ? 'ATIVADO' : 'DESATIVADO'}
+                  </label>
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Início:</label>
+                <input
+                  type="datetime-local"
+                  value={freeModeSettings.startAt}
+                  onChange={(e) => setFreeModeSettings({ ...freeModeSettings, startAt: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Fim:</label>
+                <input
+                  type="datetime-local"
+                  value={freeModeSettings.endAt}
+                  onChange={(e) => setFreeModeSettings({ ...freeModeSettings, endAt: e.target.value })}
+                />
+              </div>
+
+              <button
+                className="btn-save-free-mode"
+                onClick={handleSaveFreeMode}
+                disabled={savingFreeMode}
+              >
+                {savingFreeMode ? 'Salvando...' : 'Salvar Configuração'}
+              </button>
+            </div>
+            <p className="free-mode-info">
+              ⚠️ Quando ativado, <strong>TODOS</strong> os cursos ficarão gratuitos durante o período selecionado.
+              Um contador regressivo aparecerá na página inicial.
+            </p>
+          </div>
+        </div>
+
         {/* Stats Cards */}
         <div className="payments-stats">
           <div className="stat-card total" onClick={() => setFilter('all')}>
@@ -259,25 +386,25 @@ function AdminPayments() {
 
         {/* Filter Tabs */}
         <div className="filter-tabs">
-          <button 
+          <button
             className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}
           >
             Todos
           </button>
-          <button 
+          <button
             className={`filter-tab ${filter === 'awaiting' ? 'active' : ''}`}
             onClick={() => setFilter('awaiting')}
           >
             ⏳ Aguardando ({stats.awaiting})
           </button>
-          <button 
+          <button
             className={`filter-tab ${filter === 'approved' ? 'active' : ''}`}
             onClick={() => setFilter('approved')}
           >
             ✅ Aprovados
           </button>
-          <button 
+          <button
             className={`filter-tab ${filter === 'rejected' ? 'active' : ''}`}
             onClick={() => setFilter('rejected')}
           >
@@ -394,7 +521,7 @@ function AdminPayments() {
               rows={3}
             />
             <div className="modal-actions">
-              <button 
+              <button
                 className="btn-cancel"
                 onClick={() => {
                   setRejectModal({ open: false, orderId: null })
@@ -403,7 +530,7 @@ function AdminPayments() {
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 className="btn-confirm-reject"
                 onClick={handleReject}
                 disabled={processing[rejectModal.orderId]}

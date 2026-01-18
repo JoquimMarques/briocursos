@@ -71,5 +71,10 @@ service cloud.firestore {
       // Apenas admin pode atualizar/deletar (aprovar, rejeitar, marcar como enviado)
       allow update, delete: if isAdmin();
     }
+    // Configurações Globais (incluindo Modo Gratuito)
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
